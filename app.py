@@ -308,6 +308,7 @@ def drive_id_from_url(url):
 
     for pattern in patterns:
         match = re.search(pattern, url)
+
         if match:
             return match.group(1)
 
@@ -319,11 +320,11 @@ def download_drive_url(url):
     output_dir = Path(tempfile.mkdtemp(prefix="drive_file_"))
     output_file = output_dir / "downloaded_file"
 
-   result = gdown.download(
-    url=url,
-    output=str(output_file),
-    quiet=True,
-)
+    result = gdown.download(
+        url=url,
+        output=str(output_file),
+        quiet=True,
+    )
 
     if not result or not Path(result).exists():
         raise ValueError(
@@ -352,7 +353,10 @@ def download_drive_folder(url):
 
     for item in output_dir.rglob("*"):
         if item.is_file() and item.suffix.lower() in {
-            ".pdf", ".docx", ".txt", ".md"
+            ".pdf",
+            ".docx",
+            ".txt",
+            ".md",
         }:
             files.append(item)
 
@@ -369,7 +373,9 @@ def load_drive_documents(url):
     drive_id = drive_id_from_url(url)
 
     if not drive_id:
-        raise ValueError("The Google Drive link format was not recognized.")
+        raise ValueError(
+            "The Google Drive link format was not recognized."
+        )
 
     if "/folders/" in url:
         paths = download_drive_folder(url)
@@ -379,6 +385,7 @@ def load_drive_documents(url):
                 "No supported files were found in the Drive folder. "
                 "Supported types: PDF, DOCX, TXT and MD."
             )
+
     else:
         paths = [download_drive_url(url)]
 
@@ -387,14 +394,17 @@ def load_drive_documents(url):
     for path in paths:
         extension = path.suffix.lower()
 
-        if extension not in {".pdf", ".docx", ".txt", ".md"}:
+        if extension not in {
+            ".pdf",
+            ".docx",
+            ".txt",
+            ".md",
+        }:
             continue
 
         with open(path, "rb") as file:
             file_bytes = file.read()
 
-        # For a downloaded file with no useful extension, try to infer
-        # from the original URL where possible.
         filename = path.name
 
         if extension == "":
@@ -409,7 +419,6 @@ def load_drive_documents(url):
         )
 
     return documents
-
 
 # -----------------------------
 # Document processing
