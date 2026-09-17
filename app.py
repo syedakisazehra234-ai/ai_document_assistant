@@ -319,12 +319,11 @@ def download_drive_url(url):
     output_dir = Path(tempfile.mkdtemp(prefix="drive_file_"))
     output_file = output_dir / "downloaded_file"
 
-    result = gdown.download(
-        url=url,
-        output=str(output_file),
-        quiet=True,
-        fuzzy=True,
-    )
+   result = gdown.download(
+    url=url,
+    output=str(output_file),
+    quiet=True,
+)
 
     if not result or not Path(result).exists():
         raise ValueError(
