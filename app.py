@@ -308,7 +308,6 @@ def drive_id_from_url(url):
 
     for pattern in patterns:
         match = re.search(pattern, url)
-
         if match:
             return match.group(1)
 
@@ -316,23 +315,33 @@ def drive_id_from_url(url):
 
 
 def download_drive_url(url):
-    """Download a public Google Drive file using gdown."""
+    """Download a public Google Drive file and preserve its real filename."""
     output_dir = Path(tempfile.mkdtemp(prefix="drive_file_"))
-    output_file = output_dir / "downloaded_file"
 
+    # Passing a directory (ending with a path separator) lets gdown
+    # resolve the filename reported by Google Drive, including its
+    # extension such as .pdf, .docx, .txt or .md.
     result = gdown.download(
         url=url,
-        output=str(output_file),
+        output=str(output_dir) + os.sep,
         quiet=True,
     )
 
-    if not result or not Path(result).exists():
+    if not result:
         raise ValueError(
             "Could not download the Google Drive file. "
             "Make sure the file is shared so the app can access it."
         )
 
-    return Path(result)
+    result_path = Path(result)
+
+    if not result_path.exists():
+        raise ValueError(
+            "Google Drive download completed, but the downloaded file "
+            "could not be found."
+        )
+
+    return result_path
 
 
 def download_drive_folder(url):
@@ -353,10 +362,7 @@ def download_drive_folder(url):
 
     for item in output_dir.rglob("*"):
         if item.is_file() and item.suffix.lower() in {
-            ".pdf",
-            ".docx",
-            ".txt",
-            ".md",
+            ".pdf", ".docx", ".txt", ".md"
         }:
             files.append(item)
 
@@ -373,9 +379,7 @@ def load_drive_documents(url):
     drive_id = drive_id_from_url(url)
 
     if not drive_id:
-        raise ValueError(
-            "The Google Drive link format was not recognized."
-        )
+        raise ValueError("The Google Drive link format was not recognized.")
 
     if "/folders/" in url:
         paths = download_drive_folder(url)
@@ -385,40 +389,38 @@ def load_drive_documents(url):
                 "No supported files were found in the Drive folder. "
                 "Supported types: PDF, DOCX, TXT and MD."
             )
-
     else:
         paths = [download_drive_url(url)]
 
     documents = []
+    supported_extensions = {".pdf", ".docx", ".txt", ".md"}
 
     for path in paths:
         extension = path.suffix.lower()
 
-        if extension not in {
-            ".pdf",
-            ".docx",
-            ".txt",
-            ".md",
-        }:
+        if extension not in supported_extensions:
             continue
 
         with open(path, "rb") as file:
             file_bytes = file.read()
 
-        filename = path.name
-
-        if extension == "":
-            filename = f"drive_file_{drive_id}"
-
         documents.append(
             {
-                "filename": filename,
+                "filename": path.name,
                 "bytes": file_bytes,
                 "source": "Google Drive",
             }
         )
 
+    if not documents:
+        raise ValueError(
+            "The Drive file was downloaded, but its file type could not "
+            "be identified as PDF, DOCX, TXT or MD. "
+            "Make sure you shared the original document file."
+        )
+
     return documents
+
 
 # -----------------------------
 # Document processing
